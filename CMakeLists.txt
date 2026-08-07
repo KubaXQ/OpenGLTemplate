@@ -1,44 +1,75 @@
-#Mowimy Cmakeowi jaka minimalna wersje trzeba uzyc
+#Określamy minimalną wersję CMake wymaganą do zbudowania projektu
 cmake_minimum_required(VERSION 3.20)
 
-
+# W MSVC używamy statycznej wersji bibliotek czasu wykonywania (CRT)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-#Tworzymy projekt o nazwie OpenGlTemplate
+
+
+
+#Ustawiamy nazwe projektu
 project(OpenGlTemplate)
 
-#tworzymy zmienna dzieki czemu skracamy pisanie kodu nizej przy dolaczanniu bibliotek
-set(EXTERNAL_LIBS "${CMAKE_SOURCE_DIR}/External_Libs")
-set(GLEW_INCLUDE "${EXTERNAL_LIBS}/GLEW/include")
-set(GLFW_INCLUDE "${EXTERNAL_LIBS}/GLFW/include")
-set(GLM_INCLUDE "${EXTERNAL_LIBS}/GLM")
+# Dołączamy moduł FetchContent do pobierania zewnętrznych bibliotek
+include(FetchContent)
 
-set(GLEW_LIBRARY "${EXTERNAL_LIBS}/GLEW/lib/Release/x64/glew32s.lib")
-set(GLFW_LIBRARY "${EXTERNAL_LIBS}/GLFW/lib-vc2022/glfw3_mt.lib")
+# Definiujemy zewnętrzne biblioteki, które CMake ma pobrać
+FetchContent_Declare(
+    GLEW
+    URL https://github.com/nigels-com/glew/releases/download/glew-2.3.1/glew-2.3.1-win32.zip
+    SOURCE_SUBDIR  "build/cmake"
+)
 
-#Tworzymy program wykonywalny exe o nazwie OpenGlTemplate (taki obiekt)
+FetchContent_Declare(
+    GLFW
+    GIT_REPOSITORY https://github.com/glfw/glfw.git
+    GIT_TAG 3.4
+)
+
+FetchContent_Declare(
+    GLM
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG 1.0.3
+)
+
+# Pobieramy biblioteki i dodajemy je do procesu budowania
+FetchContent_MakeAvailable(GLEW)
+FetchContent_MakeAvailable(GLFW)
+FetchContent_MakeAvailable(GLM)
+
+# Tworzymy zmienne ze ścieżkami do plików GLEW i GLM
+set(GLEW_LIBRARY "${glew_SOURCE_DIR}/lib/Release/x64/glew32s.lib")
+
+set(GLEW_INCLUDE
+    "${glew_SOURCE_DIR}/include"
+)
+set(GLM_INCLUDE
+    "${glm_SOURCE_DIR}/glm"
+)
+
+
+#Tworzymy plik wykonywalny z plikow zrodlowych
 add_executable(OpenGLTemplate src/main.cpp src/Mesh.cpp src/Camera.cpp src/Shader.cpp src/Window.cpp)
 
+# Definiujemy makro GLEW_STATIC wymagane przy statycznym linkowaniu GLEW
 target_compile_definitions(OpenGLTemplate PRIVATE GLEW_STATIC)
 
-#dodajemy pliki naglowkowe zeby pliki zrodlowe mogly sie skompilowac
+#dodajemy sciezki do plikow naglowkowych dla projektu
 target_include_directories(OpenGLTemplate PRIVATE
     include
     ${GLEW_INCLUDE}
-    ${GLFW_INCLUDE}
     ${GLM_INCLUDE}
-
 )
 
-#dolaczamy biblioteki
+#dodajemy biblioteki do projektu
 target_link_libraries(OpenGLTemplate PRIVATE
-
-${GLEW_LIBRARY}
-${GLFW_LIBRARY}
-opengl32
-
+    ${GLEW_LIBRARY}
+    glfw
+    glm::glm
+    opengl32
 )
 
+# Po zbudowaniu projektu kopiujemy katalog Shaders do folderu z plikiem wykonywalnym
 add_custom_command(TARGET OpenGLTemplate POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_SOURCE_DIR}/Shaders"
